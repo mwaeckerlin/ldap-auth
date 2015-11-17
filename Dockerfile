@@ -1,13 +1,15 @@
 FROM ubuntu
 MAINTAINER mwaeckerlin
 
-EXPOSE 8888
+VOLUME /usr/share/nginx/html
+ENV PHP_PATH "/usr/share/nginx/html"
 
-WORKDIR /
+RUN apt-get update -y          
+RUN apt-get install -y php5-fpm php5-ldap ca-certificates
+RUN sed -i 's/^listen *=.*/listen = 9000/' /etc/php5/fpm/pool.d/www.conf
+RUN sed -i 's,^.*access.log *=.*,access.log = /var/log/php5-fpm.log,' /etc/php5/fpm/pool.d/www.conf
+RUN echo "catch_workers_output = yes" >>  /etc/php5/fpm/pool.d/www.conf
+ADD index.php ${PHP_PATH}/index.php
 
-RUN apt-get install -y git python-ldap
-RUN git clone https://github.com/nginxinc/nginx-ldap-auth.git
-
-WORKDIR /nginx-ldap-auth
-
-CMD ./nginx-ldap-auth-daemon.py
+EXPOSE 9000
+CMD ( echo "[www]"; env | sed -n "s/\([^=]*\)=\(.*\)/env[\1]='\2'/p" ) > /etc/php5/fpm/pool.d/env.conf && php5-fpm -F
